@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tính Tem và Ghi Chú</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Hide number input arrows */
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        /* Custom radio button styling */
+        .radio-label {
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #D1D5DB; /* gray-300 */
+            border-radius: 0.375rem;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .radio-label:hover {
+            background-color: #F3F4F6; /* gray-100 */
+        }
+        input[type="radio"]:checked + .radio-label {
+            background-color: #DBEAFE; /* blue-100 */
+            border-color: #2563EB; /* blue-600 */
+            color: #1E40AF; /* blue-800 */
+            font-weight: 500;
+        }
+         input[type="radio"] {
+            display: none;
+        }
+        /* Canvas for packing illustration */
+        #packingCanvas {
+            border: 1px solid #9CA3AF; /* gray-400 */
+            background-color: #F9FAFB; /* gray-50 */
+            max-width: 100%;
+            height: auto;
+            aspect-ratio: 300 / 320; /* Default, will be adjusted */
+        }
+        /* Hide/show dimension inputs based on shape selection */
+        .dimension-group {
+            display: none; /* Hidden by default */
+        }
+        .dimension-group.active {
+            display: block; /* Shown when active */
+        }
+        /* Calculator styles */
+        .calc-btn {
+            @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 rounded-lg text-xl transition-colors;
+        }
+        .calc-btn.operator {
+            @apply bg-blue-500 hover:bg-blue-600 text-white;
+        }
+        .calc-btn.clear {
+             @apply bg-red-500 hover:bg-red-600 text-white;
+        }
+        /* Modal styles */
+        .modal-overlay {
+            transition: opacity 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
+    <!-- Main container using Grid for layout -->
+    <div class="container mx-auto grid grid-cols-1 lg:grid-cols-5 gap-8 w-full max-w-7xl">
+        
+        <!-- Left Column: Stamp Calculator -->
+        <div class="lg:col-span-3 bg-white p-6 sm:p-8 rounded-xl shadow-2xl flex flex-col">
+            <div class="flex-grow">
+                <h1 class="text-2xl sm:text-3xl font-bold text-center text-blue-600 mb-6 sm:mb-8">
+                    Tính Tem
+                </h1>
+
+                <div class="space-y-4 sm:space-y-6">
+                    <div>
+                        <label for="stampShape" class="block text-sm font-medium text-gray-700 mb-1">Hình dạng tem:</label>
+                        <select id="stampShape" name="stampShape" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <option value="rectangle" selected>Hình chữ nhật</option>
+                            <option value="circle">Hình tròn</option>
+                            <option value="ellipse">Hình elip</option>
+                        </select>
+                    </div>
+
+                    <div id="rectDimensionsDiv" class="dimension-group active space-y-4">
+                        <div>
+                            <label for="stampWidth" class="block text-sm font-medium text-gray-700 mb-1">Kích thước tem - Ngang (cm):</label>
+                            <input type="number" id="stampWidth" name="stampWidth" step="any" min="0.1"
+                                   class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                   placeholder="Ví dụ: 9">
+                        </div>
+                        <div>
+                            <label for="stampHeight" class="block text-sm font-medium text-gray-700 mb-1">Kích thước tem - Cao (cm):</label>
+                            <input type="number" id="stampHeight" name="stampHeight" step="any" min="0.1"
+                                   class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                   placeholder="Ví dụ: 2">
+                        </div>
+                    </div>
+
+                    <div id="circleDimensionsDiv" class="dimension-group space-y-4">
+                        <div>
+                            <label for="circleDiameter" class="block text-sm font-medium text-gray-700 mb-1">Đường kính tem (cm):</label>
+                            <input type="number" id="circleDiameter" name="circleDiameter" step="any" min="0.1"
+                                   class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                   placeholder="Ví dụ: 4">
+                        </div>
+                    </div>
+
+                    <div id="ellipseDimensionsDiv" class="dimension-group space-y-4">
+                        <div>
+                            <label for="ellipseMajorAxis" class="block text-sm font-medium text-gray-700 mb-1">Trục lớn tem (cm):</label>
+                            <input type="number" id="ellipseMajorAxis" name="ellipseMajorAxis" step="any" min="0.1"
+                                   class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                   placeholder="Ví dụ: 6">
+                        </div>
+                        <div>
+                            <label for="ellipseMinorAxis" class="block text-sm font-medium text-gray-700 mb-1">Trục nhỏ tem (cm):</label>
+                            <input type="number" id="ellipseMinorAxis" name="ellipseMinorAxis" step="any" min="0.1"
+                                   class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                   placeholder="Ví dụ: 4">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="totalQuantity" class="block text-sm font-medium text-gray-700 mb-1">Tổng số lượng tem cần:</label>
+                        <input type="number" id="totalQuantity" name="totalQuantity" step="1" min="1"
+                               class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                               placeholder="Ví dụ: 100">
+                    </div>
+
+                    <div>
+                        <div class="flex items-center mb-2">
+                            <label class="block text-sm font-medium text-gray-700">Khổ Giấy:</label>
+                             <label for="autoCutCheckbox" class="flex items-center cursor-pointer ml-4">
+                                <input type="checkbox" id="autoCutCheckbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                <span class="ml-2 text-sm text-gray-700">Bế tự động</span>
+                            </label>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-y-3 gap-x-4">
+                            <div>
+                                <input type="radio" id="sheetSize30x32" name="sheetSize" value="30x32" checked class="hidden">
+                                <label for="sheetSize30x32" class="radio-label">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4V5h12v10z" clip-rule="evenodd" />
+                                    </svg>
+                                    33 x 35 cm
+                                </label>
+                            </div>
+                            <div>
+                                <input type="radio" id="sheetSize30x42" name="sheetSize" value="30x42" class="hidden">
+                                <label for="sheetSize30x42" class="radio-label">
+                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4V5h12v10z" clip-rule="evenodd" />
+                                    </svg>
+                                    33 x 48 cm
+                                </label>
+                            </div>
+                             <div>
+                                <input type="radio" id="sheetSize33x41" name="sheetSize" value="33x41" class="hidden">
+                                <label for="sheetSize33x41" class="radio-label">
+                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4V5h12v10z" clip-rule="evenodd" />
+                                    </svg>
+                                    33 x 41 cm
+                                </label>
+                            </div>
+                            <!-- Nút chọn Nhập -->
+                            <div>
+                                <input type="radio" id="sheetSizeCustom" name="sheetSize" value="custom" class="hidden">
+                                <label for="sheetSizeCustom" id="customSheetLabel" class="radio-label">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                       <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                    <span id="customSheetLabelText">Nhập</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="calculateButton"
+                        class="mt-6 sm:mt-8 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-150 ease-in-out">
+                    Tính Toán
+                </button>
+            </div>
+            
+            <div id="resultsArea" class="mt-6 sm:mt-8 p-4 sm:p-6 bg-blue-50 border-l-4 border-blue-500 rounded-md flex-shrink-0">
+                <h2 class="text-lg sm:text-xl font-semibold text-blue-700 mb-2 sm:mb-3">Kết quả tính toán:</h2>
+                <p id="stampsPerSheetResult" class="text-gray-800 text-sm sm:text-base min-h-[1.25rem]"></p>
+                <p id="totalSheetsResult" class="text-gray-800 text-sm sm:text-base mt-1 min-h-[1.25rem]"></p>
+                <p id="errorMessage" class="text-red-600 font-medium text-sm sm:text-base mt-1 min-h-[1.25rem]"></p>
+                
+                <div id="imageIllustrationArea" class="mt-4 pt-4 border-t border-blue-200">
+                    <h3 class="text-md font-semibold text-gray-700 mb-2">Minh họa:</h3>
+                    <canvas id="packingCanvas" width="300" height="320"></canvas> 
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Notes & Calculator -->
+        <div class="lg:col-span-2 bg-white p-6 sm:p-8 rounded-xl shadow-2xl flex flex-col">
+            <!-- Notes Section -->
+            <div class="flex-shrink-0">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Ghi Chú</h2>
+                <textarea
+                    class="w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm p-3 resize-none"
+                    style="height: 340px;"
+                    placeholder="Nhập ghi chú của bạn ở đây..."></textarea>
+            </div>
+            <!-- Calculator Section -->
+             <div id="calculator" tabindex="0" class="flex flex-col flex-grow mt-8 focus:outline-none">
+                <div class="flex-shrink-0">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Máy tính</h2>
+                    <div class="bg-gray-100 p-2 rounded-lg mb-4">
+                        <input type="text" id="calcDisplay" class="w-full bg-gray-100 text-right text-3xl font-mono p-2 border-0 focus:ring-0" placeholder="0" readonly>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button class="calc-btn clear">C</button>
+                        <button class="calc-btn operator">/</button>
+                        <button class="calc-btn operator">*</button>
+                        <button class="calc-btn operator">-</button>
+
+                        <button class="calc-btn">7</button>
+                        <button class="calc-btn">8</button>
+                        <button class="calc-btn">9</button>
+                        <button class="calc-btn operator row-span-2">+</button>
+
+                        <button class="calc-btn">4</button>
+                        <button class="calc-btn">5</button>
+                        <button class="calc-btn">6</button>
+                        
+                        <button class="calc-btn">1</button>
+                        <button class="calc-btn">2</button>
+                        <button class="calc-btn">3</button>
+                        <button class="calc-btn operator row-span-2">=</button>
+
+                        <button class="calc-btn col-span-2">0</button>
+                        <button class="calc-btn">.</button>
+                    </div>
+                </div>
+                 <!-- History -->
+                <div id="calcHistory" class="w-full mt-4 border-t pt-4 flex-grow overflow-y-auto text-right text-gray-500">
+                    <!-- Lịch sử tính toán sẽ hiển thị ở đây -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal nhập kích thước -->
+    <div id="customSizeModal" class="modal-overlay fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-6 sm:p-8 w-full max-w-sm">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Nhập khổ giấy</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="modalCustomSheetWidth" class="block text-sm font-medium text-gray-700 mb-1">Khổ rộng (cm):</label>
+                    <input type="number" id="modalCustomSheetWidth" step="any" min="1" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ví dụ: 30">
+                </div>
+                <div>
+                    <label for="modalCustomSheetHeight" class="block text-sm font-medium text-gray-700 mb-1">Khổ cao (cm):</label>
+                    <input type="number" id="modalCustomSheetHeight" step="any" min="1" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ví dụ: 40">
+                </div>
+            </div>
+            <p id="modalErrorMessage" class="text-red-600 text-sm mt-3 min-h-[1.25rem]"></p>
+            <div class="mt-6 flex justify-end space-x-4">
+                <button id="cancelCustomSize" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition">Hủy</button>
+                <button id="confirmCustomSize" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- LOGIC TÍNH TOÁN TEM ---
+
+        const SHEET_SIZES = {
+            "30x32": { 
+                label: "33x35 cm",
+                standard: { areas: [{ width: 30.8, height: 32.8 }] },
+                auto_cut: { areas: [{ width: 31.5, height: 33.5 }] }
+            },
+            "30x42": { 
+                label: "33x48 cm",
+                standard: {
+                    areas: [
+                        { width: 30.8, height: 43 },
+                        { width: 28, height: 45 }
+                    ]
+                },
+                auto_cut: { areas: [{ width: 31.5, height: 44.5 }] }
+            },
+            "33x41": {
+                label: "33x41 cm",
+                standard: { areas: [{ width: 30.8, height: 36 }] },
+                auto_cut: { areas: [{ width: 30.8, height: 36 }] }
+            }
+        };
+
+        // DOM Elements
+        const stampShapeSelect = document.getElementById('stampShape');
+        const rectDimensionsDiv = document.getElementById('rectDimensionsDiv');
+        const circleDimensionsDiv = document.getElementById('circleDimensionsDiv');
+        const ellipseDimensionsDiv = document.getElementById('ellipseDimensionsDiv');
+        const stampWidthInput = document.getElementById('stampWidth');
+        const stampHeightInput = document.getElementById('stampHeight');
+        const circleDiameterInput = document.getElementById('circleDiameter');
+        const ellipseMajorAxisInput = document.getElementById('ellipseMajorAxis');
+        const ellipseMinorAxisInput = document.getElementById('ellipseMinorAxis');
+        const totalQuantityInput = document.getElementById('totalQuantity');
+        const calculateButton = document.getElementById('calculateButton');
+        const resultsArea = document.getElementById('resultsArea');
+        const stampsPerSheetResult = document.getElementById('stampsPerSheetResult');
+        const totalSheetsResult = document.getElementById('totalSheetsResult');
+        const errorMessage = document.getElementById('errorMessage');
+        const packingCanvas = document.getElementById('packingCanvas');
+        const autoCutCheckbox = document.getElementById('autoCutCheckbox');
+        const ctx = packingCanvas.getContext('2d');
+        
+        // DOM elements cho khổ giấy nhập và modal
+        const sheetSizeRadios = document.querySelectorAll('input[name="sheetSize"]');
+        const customSheetRadio = document.getElementById('sheetSizeCustom');
+        const customSheetLabel = document.getElementById('customSheetLabel');
+        const customSheetLabelText = document.getElementById('customSheetLabelText');
+        const customSizeModal = document.getElementById('customSizeModal');
+        const modalCustomSheetWidthInput = document.getElementById('modalCustomSheetWidth');
+        const modalCustomSheetHeightInput = document.getElementById('modalCustomSheetHeight');
+        const confirmCustomSizeBtn = document.getElementById('confirmCustomSize');
+        const cancelCustomSizeBtn = document.getElementById('cancelCustomSize');
+        const modalErrorMessage = document.getElementById('modalErrorMessage');
+
+        // Biến lưu trữ trạng thái
+        let lastSelectedSheet = document.querySelector('input[name="sheetSize"]:checked');
+        let customSheetDimensions = { width: 0, height: 0 };
+
+        function getPackingAndDrawingForStrategy(sheetW, sheetH, mainItemW, mainItemH, fillItemW, fillItemH) {
+            const stampsToDraw = [];
+            let count = 0;
+            if (mainItemW <= 0 || mainItemH <= 0) return { count: 0, stampsToDraw: [] };
+            const mainCols = Math.floor(sheetW / mainItemW);
+            const mainRows = Math.floor(sheetH / mainItemH);
+            for (let r = 0; r < mainRows; r++) {
+                for (let c = 0; c < mainCols; c++) {
+                    stampsToDraw.push({ x: c * mainItemW, y: r * mainItemH, w: mainItemW, h: mainItemH, color: 'rgba(59, 130, 246, 0.6)' });
+                }
+            }
+            count += mainCols * mainRows;
+            const packedW = mainCols * mainItemW;
+            const packedH = mainRows * mainItemH;
+            const remW = sheetW - packedW;
+            const remH = sheetH - packedH;
+            let fillCountRight = 0;
+            const stampsRight = [];
+            if (remW > 0 && fillItemW > 0 && fillItemH > 0) {
+                const fillCols = Math.floor(remW / fillItemW);
+                const fillRows = Math.floor(sheetH / fillItemH);
+                for (let r = 0; r < fillRows; r++) {
+                    for (let c = 0; c < fillCols; c++) {
+                        stampsRight.push({ x: packedW + c * fillItemW, y: r * fillItemH, w: fillItemW, h: fillItemH, color: 'rgba(239, 68, 68, 0.6)' });
+                    }
+                }
+                fillCountRight = fillCols * fillRows;
+            }
+            let fillCountBottom = 0;
+            const stampsBottom = [];
+            if (remH > 0 && fillItemW > 0 && fillItemH > 0) {
+                const fillCols = Math.floor(packedW / fillItemW);
+                const fillRows = Math.floor(remH / fillItemH);
+                for (let r = 0; r < fillRows; r++) {
+                    for (let c = 0; c < fillCols; c++) {
+                        stampsBottom.push({ x: c * fillItemW, y: packedH + r * fillItemH, w: fillItemW, h: fillItemH, color: 'rgba(239, 68, 68, 0.6)' });
+                    }
+                }
+                fillCountBottom = fillCols * fillRows;
+            }
+            if (fillCountRight > fillCountBottom) {
+                return { count: count + fillCountRight, stampsToDraw: [...stampsToDraw, ...stampsRight] };
+            } else {
+                return { count: count + fillCountBottom, stampsToDraw: [...stampsToDraw, ...stampsBottom] };
+            }
+        }
+
+        function calculateAndDrawOptimalPacking(sheetW, sheetH, itemW, itemH) {
+             if (itemW <= 0 || itemH <= 0) return { count: 0, stampsToDraw: [] };
+            const result1 = getPackingAndDrawingForStrategy(sheetW, sheetH, itemW, itemH, itemH, itemW);
+            const result2 = getPackingAndDrawingForStrategy(sheetW, sheetH, itemH, itemW, itemW, itemH);
+            return result1.count >= result2.count ? result1 : result2;
+        }
+
+        function getBestPackingStrategyForShapes(sheetW, sheetH, itemW_bbox, itemH_bbox, currentSelectedShape) {
+            if (itemW_bbox <= 0 || itemH_bbox <= 0) return { count: 0, stampsToDraw: []};
+            const applyStagger = (currentSelectedShape === 'circle' || currentSelectedShape === 'ellipse');
+            const strategy1 = calculateLayoutForShapes(sheetW, sheetH, itemW_bbox, itemH_bbox, applyStagger);
+            const strategy2 = (itemW_bbox !== itemH_bbox) ? calculateLayoutForShapes(sheetW, sheetH, itemH_bbox, itemW_bbox, applyStagger) : {count: -1};
+            return strategy1.count >= strategy2.count ? strategy1 : strategy2;
+        }
+
+        function calculateLayoutForShapes(sheetW, sheetH, itemW, itemH, applyStagger) {
+            const stampsToDraw = [];
+            if (itemW <= 0 || itemH <= 0 || sheetW < itemW || sheetH < itemH) return { count: 0, stampsToDraw };
+            let totalCount = 0;
+            let currentY = 0;
+            let rowNum = 0;
+            const verticalRowStep = applyStagger ? itemH * (Math.sqrt(3) / 2) : itemH;
+            let effectiveVerticalStep = verticalRowStep > 0.001 ? verticalRowStep : itemH;
+            if(applyStagger && effectiveVerticalStep === itemH) applyStagger = false;
+            while (currentY + itemH <= sheetH + 0.0001) {
+                let startX = 0;
+                let numColsInRow;
+                if (applyStagger && rowNum % 2 !== 0) {
+                    startX = itemW / 2;
+                    numColsInRow = (startX + itemW > sheetW + 0.0001) ? 0 : Math.floor((sheetW - startX) / itemW);
+                } else {
+                    numColsInRow = Math.floor(sheetW / itemW);
+                }
+                for (let c = 0; c < numColsInRow; c++) {
+                    const currentX = startX + c * itemW;
+                    if (currentX + itemW <= sheetW + 0.0001) {
+                         stampsToDraw.push({ x: currentX, y: currentY, w: itemW, h: itemH });
+                         totalCount++;
+                    }
+                }
+                rowNum++;
+                if (itemH <= 0) break;
+                currentY += effectiveVerticalStep;
+            }
+            return { count: totalCount, stampsToDraw };
+        }
+        
+        function drawPackingIllustration(sheetW_cm, sheetH_cm, packingDetails, selectedShape) {
+            if (!sheetW_cm || !sheetH_cm || sheetW_cm <= 0 || sheetH_cm <= 0) {
+                ctx.clearRect(0, 0, packingCanvas.width, packingCanvas.height);
+                return;
+            };
+            const canvasW = packingCanvas.width; 
+            let canvasH = (canvasW / sheetW_cm) * sheetH_cm; 
+            const maxCanvasHeight = Math.min(500, canvasW * 2); 
+            if (canvasH > maxCanvasHeight) canvasH = maxCanvasHeight;
+            packingCanvas.height = canvasH; 
+            packingCanvas.style.aspectRatio = `${sheetW_cm} / ${sheetH_cm}`;
+            ctx.clearRect(0, 0, canvasW, canvasH);
+            const scale = Math.min(canvasW / sheetW_cm, canvasH / sheetH_cm); 
+            const drawingW = sheetW_cm * scale;
+            const drawingH = sheetH_cm * scale;
+            const offsetX = (canvasW - drawingW) / 2;
+            const offsetY = (canvasH - drawingH) / 2;
+            ctx.strokeStyle = '#9CA3AF'; 
+            ctx.lineWidth = 2;
+            ctx.strokeRect(offsetX, offsetY, drawingW, drawingH);
+
+            if (!packingDetails || !packingDetails.stampsToDraw) return;
+
+            packingDetails.stampsToDraw.forEach(bbox => { 
+                const bboxX_scaled = offsetX + bbox.x * scale;
+                const bboxY_scaled = offsetY + bbox.y * scale;
+                const bboxW_scaled = bbox.w * scale; 
+                const bboxH_scaled = bbox.h * scale; 
+                ctx.strokeStyle = '#1F2937';
+                ctx.lineWidth = 0.5;
+
+                if (selectedShape === 'rectangle') {
+                    ctx.fillStyle = bbox.color || 'rgba(59, 130, 246, 0.6)';
+                    ctx.fillRect(bboxX_scaled, bboxY_scaled, bboxW_scaled, bboxH_scaled);
+                    ctx.strokeRect(bboxX_scaled, bboxY_scaled, bboxW_scaled, bboxH_scaled);
+                } else if (selectedShape === 'circle') {
+                    ctx.fillStyle = 'rgba(59, 130, 246, 0.6)';
+                    const centerX = bboxX_scaled + bboxW_scaled / 2;
+                    const centerY = bboxY_scaled + bboxH_scaled / 2;
+                    const radius = Math.min(bboxW_scaled, bboxH_scaled) / 2;
+                    if (radius > 0.1) {
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                } else if (selectedShape === 'ellipse') {
+                    ctx.fillStyle = 'rgba(59, 130, 246, 0.6)';
+                    const centerX = bboxX_scaled + bboxW_scaled / 2;
+                    const centerY = bboxY_scaled + bboxH_scaled / 2;
+                    const radiusX = bboxW_scaled / 2; 
+                    const radiusY = bboxH_scaled / 2; 
+                     if (radiusX > 0.1 && radiusY > 0.1) {
+                        ctx.beginPath();
+                        ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                }
+            });
+        }
+
+        function handleCalculation() {
+            stampsPerSheetResult.textContent = '';
+            totalSheetsResult.textContent = '';
+            errorMessage.textContent = '';
+            ctx.clearRect(0, 0, packingCanvas.width, packingCanvas.height);
+
+            const selectedShape = stampShapeSelect.value;
+            let stampW, stampH; 
+            let validationError = false;
+
+            if (selectedShape === 'rectangle') {
+                stampW = parseFloat(stampWidthInput.value);
+                stampH = parseFloat(stampHeightInput.value);
+                if (isNaN(stampW) || stampW <= 0 || isNaN(stampH) || stampH <= 0) validationError = true;
+            } else if (selectedShape === 'circle') {
+                const diameter = parseFloat(circleDiameterInput.value);
+                if (isNaN(diameter) || diameter <= 0) validationError = true;
+                stampW = stampH = diameter;
+            } else if (selectedShape === 'ellipse') {
+                const majorAxis = parseFloat(ellipseMajorAxisInput.value);
+                const minorAxis = parseFloat(ellipseMinorAxisInput.value);
+                if (isNaN(majorAxis) || majorAxis <= 0 || isNaN(minorAxis) || minorAxis <= 0) {
+                    validationError = true;
+                } else if (minorAxis > majorAxis) {
+                     errorMessage.textContent = 'Trục nhỏ không được lớn hơn trục lớn của elip.';
+                     validationError = true; 
+                } else {
+                    stampW = majorAxis; 
+                    stampH = minorAxis; 
+                }
+            }
+
+            const totalQuantity = parseInt(totalQuantityInput.value, 10);
+            if (isNaN(totalQuantity) || totalQuantity <= 0) validationError = true;
+
+            const selectedSheetValue = document.querySelector('input[name="sheetSize"]:checked').value;
+            const isAutoCut = autoCutCheckbox.checked;
+            let sheetCalculationAreas;
+            let currentSheetDisplayLabel;
+
+            if (selectedSheetValue === 'custom') {
+                const { width: customW, height: customH } = customSheetDimensions;
+                if (customW <= 0 || customH <= 0) {
+                    errorMessage.textContent = 'Vui lòng nhập kích thước khổ giấy hợp lệ.';
+                    validationError = true;
+                } else {
+                    sheetCalculationAreas = [{ width: customW, height: customH }];
+                    currentSheetDisplayLabel = `Nhập ${customW}x${customH} cm`;
+                }
+            } else {
+                const currentSheetData = SHEET_SIZES[selectedSheetValue];
+                sheetCalculationAreas = isAutoCut ? currentSheetData.auto_cut.areas : currentSheetData.standard.areas;
+                currentSheetDisplayLabel = currentSheetData.label;
+            }
+
+            if (validationError) {
+                 if (!errorMessage.textContent) errorMessage.textContent = 'Vui lòng nhập giá trị hợp lệ cho tất cả các trường.';
+                resultsArea.classList.add('bg-red-50', 'border-red-500');
+                resultsArea.classList.remove('bg-blue-50', 'border-blue-500');
+                return;
+            }
+
+            resultsArea.classList.add('bg-blue-50', 'border-blue-500');
+            resultsArea.classList.remove('bg-red-50', 'border-red-500');
+            
+            let maxStamps = 0;
+            let bestPackingDetails = null;
+            let bestSheetDim = null;
+
+            for (const area of sheetCalculationAreas) {
+                let packingResult;
+                if (selectedShape === 'rectangle') {
+                    packingResult = calculateAndDrawOptimalPacking(area.width, area.height, stampW, stampH);
+                } else {
+                    packingResult = getBestPackingStrategyForShapes(area.width, area.height, stampW, stampH, selectedShape);
+                }
+
+                if (packingResult.count > maxStamps) {
+                    maxStamps = packingResult.count;
+                    bestPackingDetails = packingResult;
+                    bestSheetDim = area;
+                }
+            }
+            
+            stampsPerSheetResult.textContent = `Số tem tối đa trên 1 tờ (${currentSheetDisplayLabel}): ${maxStamps} tem.`;
+
+            if (maxStamps > 0) {
+                const totalSheets = Math.ceil(totalQuantity / maxStamps);
+                totalSheetsResult.textContent = `Tổng số tờ cần thiết: ${totalSheets} tờ.`;
+                if (bestPackingDetails && bestSheetDim) {
+                    drawPackingIllustration(bestSheetDim.width, bestSheetDim.height, bestPackingDetails, selectedShape);
+                }
+            } else {
+                totalSheetsResult.textContent = 'Không thể xếp tem lên tờ (tem quá lớn hoặc kích thước không hợp lệ).';
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        stampShapeSelect.addEventListener('change', function() {
+            rectDimensionsDiv.classList.remove('active');
+            circleDimensionsDiv.classList.remove('active');
+            ellipseDimensionsDiv.classList.remove('active');
+            if (this.value === 'rectangle') rectDimensionsDiv.classList.add('active');
+            else if (this.value === 'circle') circleDimensionsDiv.classList.add('active');
+            else if (this.value === 'ellipse') ellipseDimensionsDiv.classList.add('active');
+        });
+
+        calculateButton.addEventListener('click', handleCalculation);
+        [stampWidthInput, stampHeightInput, circleDiameterInput, ellipseMajorAxisInput, ellipseMinorAxisInput, totalQuantityInput].forEach(input => {
+            if(input) { 
+                input.addEventListener('keypress', (event) => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        calculateButton.click();
+                    }
+                });
+            }
+        });
+        
+        // Logic cho modal khổ giấy nhập
+        function openCustomSizeModal() {
+            modalErrorMessage.textContent = '';
+            // Lấy giá trị hiện tại nếu có để người dùng dễ sửa
+            if(customSheetDimensions.width > 0) {
+                modalCustomSheetWidthInput.value = customSheetDimensions.width;
+            } else {
+                modalCustomSheetWidthInput.value = '';
+            }
+            if(customSheetDimensions.height > 0) {
+                modalCustomSheetHeightInput.value = customSheetDimensions.height;
+            } else {
+                modalCustomSheetHeightInput.value = '';
+            }
+            customSizeModal.classList.remove('hidden');
+            // Focus và chọn toàn bộ nội dung trong ô nhập đầu tiên
+            modalCustomSheetWidthInput.focus();
+            modalCustomSheetWidthInput.select();
+        }
+
+        function closeCustomSizeModal() {
+            customSizeModal.classList.add('hidden');
+        }
+        
+        sheetSizeRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                if(radio.value !== 'custom') {
+                    lastSelectedSheet = radio;
+                    if(customSheetDimensions.width === 0) {
+                        customSheetLabelText.textContent = 'Nhập';
+                    }
+                }
+            });
+        });
+
+        customSheetLabel.addEventListener('click', () => {
+             customSheetRadio.checked = true;
+             openCustomSizeModal();
+        });
+
+        cancelCustomSizeBtn.addEventListener('click', () => {
+            closeCustomSizeModal();
+            if (lastSelectedSheet) {
+                lastSelectedSheet.checked = true;
+            }
+        });
+        
+        customSizeModal.addEventListener('click', (e) => {
+             if(e.target === customSizeModal) {
+                cancelCustomSizeBtn.click();
+             }
+        });
+
+        confirmCustomSizeBtn.addEventListener('click', () => {
+            const width = parseFloat(modalCustomSheetWidthInput.value);
+            const height = parseFloat(modalCustomSheetHeightInput.value);
+
+            if(isNaN(width) || width <= 0 || isNaN(height) || height <= 0) {
+                modalErrorMessage.textContent = 'Vui lòng nhập kích thước hợp lệ.';
+                return;
+            }
+            
+            customSheetDimensions.width = width;
+            customSheetDimensions.height = height;
+            customSheetLabelText.textContent = `Nhập: ${width}x${height}cm`;
+            lastSelectedSheet = customSheetRadio;
+            closeCustomSizeModal();
+        });
+        
+        [modalCustomSheetWidthInput, modalCustomSheetHeightInput].forEach(input => {
+            input.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    confirmCustomSizeBtn.click();
+                }
+            });
+        });
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            stampShapeSelect.dispatchEvent(new Event('change')); 
+        });
+
+
+        // --- LOGIC MÁY TÍNH ---
+        const calcDisplay = document.getElementById('calcDisplay');
+        const calcHistory = document.getElementById('calcHistory');
+        const calculator = document.getElementById('calculator');
+
+        function performCalculation() {
+            const expression = calcDisplay.value;
+            if (!expression) return;
+
+            try {
+                const sanitizedExpression = expression.replace(/[^-()\d/*+.]/g, '');
+                const result = new Function('return ' + sanitizedExpression)();
+                
+                const historyEntry = document.createElement('p');
+                historyEntry.className = 'text-sm mb-1';
+                historyEntry.textContent = `${expression} = ${result}`;
+                calcHistory.prepend(historyEntry);
+
+                calcDisplay.value = result;
+            } catch (error) {
+                calcDisplay.value = 'Lỗi';
+            }
+        }
+
+        calculator.addEventListener('click', function(e) {
+            if (!e.target.matches('.calc-btn')) return;
+            const key = e.target.textContent;
+            if (calcDisplay.value === 'Lỗi') calcDisplay.value = '';
+            if (key === 'C') calcDisplay.value = '';
+            else if (key === '=') performCalculation();
+            else calcDisplay.value += key;
+        });
+
+        calculator.addEventListener('keydown', function(e) {
+            const key = e.key;
+            if (calcDisplay.value === 'Lỗi') calcDisplay.value = '';
+
+            if (/[0-9\.]/.test(key) || /[\+\-\*\/]/.test(key)) {
+                e.preventDefault();
+                calcDisplay.value += key;
+            } else if (key === 'Enter') {
+                e.preventDefault();
+                performCalculation();
+            } else if (key === 'Backspace') {
+                e.preventDefault();
+                calcDisplay.value = calcDisplay.value.slice(0, -1);
+            } else if (key.toLowerCase() === 'c' || key === 'Delete') {
+                e.preventDefault();
+                calcDisplay.value = '';
+            }
+        });
+    </script>
+</body>
+</html>
